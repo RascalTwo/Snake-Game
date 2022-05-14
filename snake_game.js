@@ -24,10 +24,20 @@ peer.on('open', id => {
 const hostID = new URLSearchParams(window.location.hash.slice(1)).get('host');
 if (hostID){
   host = peer.connect(hostID);
+
+  host.on('error', console.error)
   host.on('open', () => {
     snakeCount++;
     activeSnakes.push(1);
   });
+  host.on('close', () => {
+    host = undefined
+    document.querySelectorAll('.snakeBodyPixel0').forEach(pixel => pixel.classList.remove('snakeBodyPixel0'))
+    document.querySelectorAll('.snakeBodyPixel1').forEach(pixel => pixel.classList.remove('snakeBodyPixel1'))
+    snakeCount--;
+    activeSnakes.pop()
+    setInterval(moveSnake, 100)
+  })
   host.on('data', data => {
     totalDistanceTraveled++
 
@@ -36,6 +46,9 @@ if (hostID){
       totalFoodEaten = data.totalFoodEaten
       document.getElementById("pointsEarned").innerText = totalFoodEaten.slice(0, snakeCount).join(' ')
     }
+    snakeCurrentDirections = data.snakeCurrentDirections
+    snakeLengths = data.snakeLengths
+    currentHeadPositions = data.currentHeadPositions
 
     document.querySelectorAll('.snakeBodyPixel0').forEach(pixel => pixel.classList.remove('snakeBodyPixel0'))
     document.querySelectorAll('.snakeBodyPixel1').forEach(pixel => pixel.classList.remove('snakeBodyPixel1'))
@@ -61,6 +74,14 @@ peer.on('connection', (conn) => {
   conn.on('data', (data) => {
     changeDirection(data, 1);
   });
+
+  conn.on('error', console.error)
+
+  conn.on('close', () => {
+    client = undefined
+    snakeCount--;
+    activeSnakes.pop()
+  })
 });
 
 //Shorten reference to game board
@@ -124,15 +145,18 @@ const moveSnake = () => {
   if (client) {
     const snakes = {}
     for (let i = 0; i < gameBoardPixels.length; i++){
-      const snakeIndex = gameBoardPixels[i].className.split('snakeBodyPixel')[1]
-      if (snakeIndex) snakes[i] = snakeIndex;
+      const snakeIndex = (+gameBoardPixels[i].className.split('snakeBodyPixel')[1])
+      if (!isNaN(snakeIndex)) snakes[i] = snakeIndex;
     }
     const data = {
       snakes,
       currentFoodPosition,
+      snakeCurrentDirections,
+      snakeLengths,
+      currentHeadPositions,
       totalFoodEaten
     };
-    client.send(data)
+    if (client.open) client.send(data)
   }
   for (const i of activeSnakes){
     let currentHeadPosition = currentHeadPositions[i];
@@ -165,7 +189,7 @@ const moveSnake = () => {
           currentHeadPosition = currentHeadPosition - TOTAL_PIXEL_COUNT
         }
         break;
-        default:
+      default:
         break;
       }
       currentHeadPositions[i] = currentHeadPosition
@@ -181,7 +205,6 @@ const moveSnake = () => {
         alert(`You have eaten ${totalFoodEaten[i]} food and traveled ${totalDistanceTraveled} blocks.`)
         activeSnakes.splice(activeSnakes.indexOf(i), 1)
         if (!activeSnakes.length) {
-          clearInterval(moveSnakeInterval)
           window.location.reload()
         }
       }
