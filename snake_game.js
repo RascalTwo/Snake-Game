@@ -10,12 +10,10 @@ let snakeCount = 1;
 let totalDistanceTraveled = 0
 
 const onlineSelect = document.querySelector('select')
-const usernameInput = document.querySelector('input')
-usernameInput.addEventListener('change', () => {
-  if (peer) peer.disconnect()
-  if (!usernameInput.value) return onlineSelect.disabled = true;
-  joinNetwork(usernameInput.value)
-});
+onlineSelect.addEventListener('change', () => {
+  const otherID = onlineSelect.value
+  joinHost(NAMESPACE + otherID)
+})
 
 const NAMESPACE = 'RT-MYSN'
 const API_KEY = 'mylb8e54'
@@ -24,19 +22,34 @@ let peer;
 let host;
 let client;
 let pollingInterval
-const joinNetwork = username => {
-  peer = new Peer(NAMESPACE + username, ['127.0.0.1', 'localhost'].includes(window.location.hostname) ? {
+const joinNetwork = nth => {
+  peer = new Peer(NAMESPACE + nth, ['127.0.0.1', 'localhost'].includes(window.location.hostname) ? {
     host: 'localhost',
     path: '/myapp',
     port: 9000
   } : undefined);
 
+  peer.on('error', err => {
+    if (err.type === 'unavailable-id') return joinNetwork(nth + 1)
+    console.error(err)
+  })
+
   peer.on('open', () => {
-    pollingInterval = setInterval(pollForGames, 60000);
-    pollForGames()
+    if (!nth) return
+    const oldValue = onlineSelect.value;
+    onlineSelect.innerHTML = '';
+    for (let i = 0; i < nth; i++){
+      const option = document.createElement('option');
+      option.value = i;
+      option.textContent = '#' + i;
+      onlineSelect.appendChild(option);
+    }
+    onlineSelect.value = oldValue;
+    onlineSelect.disabled = false;
   });
 
   peer.on('connection', (conn) => {
+    if (snakeCount !== 1) return conn.close()
     client = conn;
     if (snakeCount === 1){
       snakeCount++;
@@ -56,7 +69,7 @@ const joinNetwork = username => {
     })
   });
 }
-
+joinNetwork(0)
 
 function joinHost(hostID){
   host = peer.connect(hostID);
@@ -100,10 +113,6 @@ function joinHost(hostID){
   })
 }
 
-function pollOnlineGames(){
-
-}
-
 //Shorten reference to game board
 const gameContainer = document.getElementById('gameContainer')
 
@@ -127,11 +136,6 @@ const createFood = () => {
 }
 
 //Start setting up snake behavior
-
-const setMessage = msg => {
-  document.querySelector('#message').classList.remove('hidden')
-  document.querySelector('#message').textContent = msg;
-}
 
 const LEFT_DIRS = [37, 65]
 const UP_DIRS = [38, 87]
@@ -226,7 +230,6 @@ const moveSnake = () => {
   
       //Check if snake head is about to intersect with its own body
       if (nextSnakeHeadPixel.classList.contains(className) || nextSnakeHeadPixel.classList.contains(otherClassName)) {
-        setMessage(`You have eaten ${totalFoodEaten[i]} food and traveled ${totalDistanceTraveled} blocks.`)
         activeSnakes.splice(activeSnakes.indexOf(i), 1)
         if (!activeSnakes.length) {
           setTimeout(() => {
@@ -285,6 +288,7 @@ function handleDirectionChange(direction){
 }
 
 addEventListener("keydown", e => {
+  e.preventDefault()
   handleDirectionChange(e.keyCode)
 })
 
