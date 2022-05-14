@@ -238,10 +238,10 @@ if (!host) {
   setInterval(moveSnake, 100)
 }
 
-addEventListener("keydown", e => {
+function handleDirectionChange(direction){
   let foundIndex = -1;
   for (const codes of DIRECTIONS){
-    foundIndex = codes.indexOf(e.keyCode)
+    foundIndex = codes.indexOf(direction)
     if (foundIndex !== -1) break;
   }
   if (foundIndex === -1) return
@@ -254,8 +254,12 @@ addEventListener("keydown", e => {
     }
   }
 
-  if (host) host.send(DIRECTIONS.find(codes => codes.indexOf(e.keyCode) === foundIndex)[(foundIndex + 1) % 2])
-  else changeDirection(e.keyCode, foundIndex);
+  if (host) host.send(DIRECTIONS.find(codes => codes.indexOf(direction) === foundIndex)[(foundIndex + 1) % 2])
+  else changeDirection(direction, foundIndex);
+}
+
+addEventListener("keydown", e => {
+  handleDirectionChange(e.keyCode)
 })
 
 //Adding variables for on-screen buttons
@@ -265,7 +269,7 @@ const upButton  = document.getElementById('upButton')
 const downButton  = document.getElementById('downButton')
 
 //Add listeners for on-screen buttons
-leftButton.onclick = () => changeDirection(LEFT_DIRS[0], 0)
-rightButton.onclick = () => changeDirection(RIGHT_DIRS[0], 0)
-upButton.onclick = () => changeDirection(UP_DIRS[0], 0)
-downButton.onclick = () => changeDirection(DOWN_DIRS[0], 0)
+leftButton.onclick = () => handleDirectionChange(LEFT_DIRS[0])
+rightButton.onclick = () => handleDirectionChange(RIGHT_DIRS[0])
+upButton.onclick = () => handleDirectionChange(UP_DIRS[0])
+downButton.onclick = () => handleDirectionChange(DOWN_DIRS[0])
