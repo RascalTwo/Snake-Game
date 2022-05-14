@@ -25,9 +25,14 @@ body {
   box-shadow: 0 0 10px #fa8080;
 }
 
-.snakeBodyPixel {
+.snakeBodyPixel0 {
   background-color: #049a2c;
   box-shadow: 0 0 5px #07d50b;
+}
+
+.snakeBodyPixel1 {
+  background-color: hsl(45, 95%, 31%);
+  box-shadow: 0 0 5px hsl(35, 94%, 43%);
 }
 
 #scoreContainer {
