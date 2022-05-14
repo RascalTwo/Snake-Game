@@ -47,6 +47,9 @@ fieldset {
   grid-template-columns: auto auto;
 }
 
+legend {
+  margin: auto;
+}
 
 .scoreBoard {
   font-family: 'Courier New', Courier, monospace;
