@@ -9,20 +9,56 @@ let activeSnakes = [0];
 let snakeCount = 1;
 let totalDistanceTraveled = 0
 
-const peer = new Peer(new URLSearchParams(window.location.hash.slice(1)).get('id') || undefined, {
-  host: 'localhost',
-  path: '/myapp',
-  port: 9000
+const onlineSelect = document.querySelector('select')
+const usernameInput = document.querySelector('input')
+usernameInput.addEventListener('change', () => {
+  if (peer) peer.disconnect()
+  if (!usernameInput.value) return onlineSelect.disabled = true;
+  joinNetwork(usernameInput.value)
 });
 
+const NAMESPACE = 'RT-MYSN'
+const API_KEY = 'mylb8e54'
+
+let peer;
 let host;
 let client;
-peer.on('open', id => {
-  console.log(id)
-})
+let pollingInterval
+const joinNetwork = username => {
+  peer = new Peer(NAMESPACE + username, ['127.0.0.1', 'localhost'].includes(window.location.hostname) ? {
+    host: 'localhost',
+    path: '/myapp',
+    port: 9000
+  } : undefined);
 
-const hostID = new URLSearchParams(window.location.hash.slice(1)).get('host');
-if (hostID){
+  peer.on('open', () => {
+    pollingInterval = setInterval(pollForGames, 60000);
+    pollForGames()
+  });
+
+  peer.on('connection', (conn) => {
+    client = conn;
+    if (snakeCount === 1){
+      snakeCount++;
+    }
+    if (!activeSnakes.includes(1)) activeSnakes.push(1);
+
+    conn.on('data', (data) => {
+      changeDirection(data, 1);
+    });
+
+    conn.on('error', console.error)
+
+    conn.on('close', () => {
+      client = undefined
+      snakeCount--;
+      activeSnakes.pop()
+    })
+  });
+}
+
+
+function joinHost(hostID){
   host = peer.connect(hostID);
 
   host.on('error', console.error)
@@ -64,25 +100,9 @@ if (hostID){
   })
 }
 
-peer.on('connection', (conn) => {
-  client = conn;
-  if (snakeCount === 1){
-    snakeCount++;
-  }
-  if (!activeSnakes.includes(1)) activeSnakes.push(1);
+function pollOnlineGames(){
 
-  conn.on('data', (data) => {
-    changeDirection(data, 1);
-  });
-
-  conn.on('error', console.error)
-
-  conn.on('close', () => {
-    client = undefined
-    snakeCount--;
-    activeSnakes.pop()
-  })
-});
+}
 
 //Shorten reference to game board
 const gameContainer = document.getElementById('gameContainer')
