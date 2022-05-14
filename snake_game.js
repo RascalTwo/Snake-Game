@@ -108,6 +108,11 @@ const createFood = () => {
 
 //Start setting up snake behavior
 
+const setMessage = msg => {
+  document.querySelector('#message').classList.remove('hidden')
+  document.querySelector('#message').textContent = msg;
+}
+
 const LEFT_DIRS = [37, 65]
 const UP_DIRS = [38, 87]
 const RIGHT_DIRS = [39, 68]
@@ -201,11 +206,12 @@ const moveSnake = () => {
   
       //Check if snake head is about to intersect with its own body
       if (nextSnakeHeadPixel.classList.contains(className) || nextSnakeHeadPixel.classList.contains(otherClassName)) {
-        // TODO - replace
-        alert(`You have eaten ${totalFoodEaten[i]} food and traveled ${totalDistanceTraveled} blocks.`)
+        setMessage(`You have eaten ${totalFoodEaten[i]} food and traveled ${totalDistanceTraveled} blocks.`)
         activeSnakes.splice(activeSnakes.indexOf(i), 1)
         if (!activeSnakes.length) {
-          window.location.reload()
+          setTimeout(() => {
+            window.location.reload()
+          }, 5000)
         }
       }
   

@@ -8,10 +8,24 @@
     <link rel="stylesheet" type="text/css" href="snake_game.css" />
   </head>
   <body>
+    <p id="message" class="hidden">Message</p>
     <section id = 'gameContainer'></section>
     <section id="scoreContainer">
       <section class="scoreBoard">Food: <span id="pointsEarned">0</span></section>
       <section class="scoreBoard">Blocks: <span id="blocksTraveled">0</span></section>
+    </section>
+    <section class="scoreBoard">
+      <fieldset>
+        <legend>Online Multiplayer</legend>
+
+        <label for="available-users">Available</label>
+        <select id="available-users" disabled>
+          <option value="">None</option>
+        </select>
+
+        <label for="username">Username</label>
+        <input id="username" placeholder="Enter username to join Online games"/>
+      </fieldset>
     </section>
 
     <section id="onScreenControllers">
