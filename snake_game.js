@@ -5,8 +5,8 @@ const TOTAL_PIXEL_COUNT = LINE_PIXEL_COUNT**2
 
 //Track scores to display to user
 let totalFoodEaten = [0, 0]
-let activeSnakes = [0, 1];
-let snakeCount = 2;
+let activeSnakes = [0];
+let snakeCount = 1;
 let totalDistanceTraveled = 0
 
 const peer = new Peer(new URLSearchParams(window.location.hash.slice(1)).get('id') || undefined, {
@@ -15,24 +15,51 @@ const peer = new Peer(new URLSearchParams(window.location.hash.slice(1)).get('id
   port: 9000
 });
 
+let host;
+let client;
 peer.on('open', id => {
   console.log(id)
 })
 
 const hostID = new URLSearchParams(window.location.hash.slice(1)).get('host');
 if (hostID){
-  const conn = peer.connect(hostID);
-  // on open will be launch when you successfully connect to PeerServer
-  conn.on('open', () => {
-    // here you have conn.id
-    conn.send('hi!');
+  host = peer.connect(hostID);
+  host.on('open', () => {
+    snakeCount++;
+    activeSnakes.push(1);
   });
+  host.on('data', data => {
+    totalDistanceTraveled++
+
+    document.getElementById("blocksTraveled").innerText = totalDistanceTraveled
+    if (totalFoodEaten !== data.totalFoodEaten){
+      totalFoodEaten = data.totalFoodEaten
+      document.getElementById("pointsEarned").innerText = totalFoodEaten.slice(0, snakeCount).join(' ')
+    }
+
+    document.querySelectorAll('.snakeBodyPixel0').forEach(pixel => pixel.classList.remove('snakeBodyPixel0'))
+    document.querySelectorAll('.snakeBodyPixel1').forEach(pixel => pixel.classList.remove('snakeBodyPixel1'))
+
+    for (const key in data.snakes){
+      gameBoardPixels[key].classList.add('snakeBodyPixel' + data.snakes[key])
+    }
+
+    if (data.currentFoodPosition === currentFoodPosition) return;
+    gameBoardPixels[currentFoodPosition].classList.remove("food")
+    currentFoodPosition = data.currentFoodPosition
+    gameBoardPixels[currentFoodPosition].classList.add('food')
+  })
 }
 
 peer.on('connection', (conn) => {
+  client = conn;
+  if (snakeCount === 1){
+    snakeCount++;
+  }
+  if (!activeSnakes.includes(1)) activeSnakes.push(1);
+
   conn.on('data', (data) => {
-    // Will print 'hi!'
-    console.log(data);
+    changeDirection(data, 1);
   });
 });
 
@@ -40,16 +67,14 @@ peer.on('connection', (conn) => {
 const gameContainer = document.getElementById('gameContainer')
 
 //Generate the game board
-const createGameBoardPixels = () => {
-  let html = ''
-  for (let i = 1; i<= TOTAL_PIXEL_COUNT; i++) {
-    html = `${html} <div class="gameBoardPixel" id = "pixel${i}"></div>`;
-  }
-  gameContainer.innerHTML = html;
+let html = ''
+for (let i = 1; i<= TOTAL_PIXEL_COUNT; i++) {
+  html = `${html} <div class="gameBoardPixel" id = "pixel${i}"></div>`;
 }
+gameContainer.innerHTML = html;
 
 //Shorten references to game pixels
-const gameBoardPixels = document.getElementsByClassName("gameBoardPixel")
+const gameBoardPixels = [...document.getElementsByClassName("gameBoardPixel")]
 
 let currentFoodPosition = 0
 
@@ -95,6 +120,20 @@ let snakeLengths = [200, 200]
 
 //Start moving snake, wrap around to other side of screen if needed
 const moveSnake = () => {
+
+  if (client) {
+    const snakes = {}
+    for (let i = 0; i < gameBoardPixels.length; i++){
+      const snakeIndex = gameBoardPixels[i].className.split('snakeBodyPixel')[1]
+      if (snakeIndex) snakes[i] = snakeIndex;
+    }
+    const data = {
+      snakes,
+      currentFoodPosition,
+      totalFoodEaten
+    };
+    client.send(data)
+  }
   for (const i of activeSnakes){
     let currentHeadPosition = currentHeadPositions[i];
     switch (snakeCurrentDirections[i]) {
@@ -163,20 +202,18 @@ const moveSnake = () => {
         snakeLengths[i] = snakeLengths[i] + 100
         createFood()
       }
-  
-      //Added distance traveled count
-      totalDistanceTraveled++
-      document.getElementById("blocksTraveled").innerText = totalDistanceTraveled
   }
+  //Added distance traveled count
+  totalDistanceTraveled++
+  document.getElementById("blocksTraveled").innerText = totalDistanceTraveled
 }
 
-//Call initial functions to create board and start game
-createGameBoardPixels();
+if (!host) {
+  createFood();
 
-createFood();
-
-//Set animation speed
-let moveSnakeInterval = setInterval(moveSnake, 100)
+  //Set animation speed
+  setInterval(moveSnake, 100)
+}
 
 addEventListener("keydown", e => {
   let foundIndex = -1;
@@ -184,8 +221,18 @@ addEventListener("keydown", e => {
     foundIndex = codes.indexOf(e.keyCode)
     if (foundIndex !== -1) break;
   }
+  if (foundIndex === -1) return
 
-  changeDirection(e.keyCode, foundIndex);
+  if (foundIndex === 1) {
+    if (client || host) return;
+    if (snakeCount === 1) {
+      snakeCount++;
+      activeSnakes.push(1);
+    }
+  }
+
+  if (host) host.send(DIRECTIONS.find(codes => codes.indexOf(e.keyCode) === foundIndex)[(foundIndex + 1) % 2])
+  else changeDirection(e.keyCode, foundIndex);
 })
 
 //Adding variables for on-screen buttons
@@ -195,7 +242,7 @@ const upButton  = document.getElementById('upButton')
 const downButton  = document.getElementById('downButton')
 
 //Add listeners for on-screen buttons
-leftButton.onclick = () => changeDirection(LEFT_DIR, 0)
-rightButton.onclick = () => changeDirection(RIGHT_DIR, 0)
-upButton.onclick = () => changeDirection(UP_DIR, 0)
-downButton.onclick = () => changeDirection(DOWN_DIR, 0)
+leftButton.onclick = () => changeDirection(LEFT_DIRS[0], 0)
+rightButton.onclick = () => changeDirection(RIGHT_DIRS[0], 0)
+upButton.onclick = () => changeDirection(UP_DIRS[0], 0)
+downButton.onclick = () => changeDirection(DOWN_DIRS[0], 0)
